@@ -163,3 +163,25 @@ async def test_user_creation(db_session: AsyncSession):
     assert new_user.role == UserRole.AUTHENTICATED, "New user should have the default AUTHENTICATED role"
     assert new_user.nickname == "new_user", "Nickname should match the provided value"
     assert new_user.email == "new_user@example.com", "Email should match the provided value"
+
+@pytest.mark.asyncio
+async def test_user_update(db_session: AsyncSession, user: User):
+    """
+    Tests updating a user's details and ensuring the changes persist correctly.
+    """
+    # Modify user details
+    updated_nickname = "updated_user"
+    updated_email = "updated_user@example.com"
+    updated_bio = "Updated user bio"
+    user.nickname = updated_nickname
+    user.email = updated_email
+    user.bio = updated_bio
+
+    # Commit changes to the database
+    await db_session.commit()
+    await db_session.refresh(user)
+
+    # Assertions to verify the updates
+    assert user.nickname == updated_nickname, "Nickname should update correctly"
+    assert user.email == updated_email, "Email should update correctly"
+    assert user.bio == updated_bio, "Bio should update correctly"
