@@ -139,3 +139,27 @@ async def test_update_user_role(db_session: AsyncSession, user: User):
     await db_session.commit()
     await db_session.refresh(user)
     assert user.role == UserRole.ADMIN, "Role update should persist correctly in the database"
+
+@pytest.mark.asyncio
+async def test_user_creation(db_session: AsyncSession):
+    """
+    Tests the creation of a new user.
+    """
+    # Add all required fields, including hashed_password
+    new_user = User(
+        nickname="new_user",
+        email="new_user@example.com",
+        role=UserRole.AUTHENTICATED,
+        bio="New user bio",
+        profile_picture_url="https://example.com/new_user.jpg",
+        hashed_password="hashed_dummy_password",  # Provide a valid hashed password
+    )
+    db_session.add(new_user)
+    await db_session.commit()
+    await db_session.refresh(new_user)
+
+    # Assertions to verify user creation
+    assert new_user.id is not None, "New user should have a valid ID after creation"
+    assert new_user.role == UserRole.AUTHENTICATED, "New user should have the default AUTHENTICATED role"
+    assert new_user.nickname == "new_user", "Nickname should match the provided value"
+    assert new_user.email == "new_user@example.com", "Email should match the provided value"
