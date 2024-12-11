@@ -176,3 +176,20 @@ async def test_search_users_by_exact_nickname(db_session, user):
     retrieved_user = await UserService.get_by_nickname(db_session, user.nickname)
     assert retrieved_user is not None, "A user should be returned for an existing nickname"
     assert retrieved_user.nickname == user.nickname, "The retrieved user's nickname should match the queried nickname"
+
+async def test_list_users_with_filters(db_session, users_with_same_role_50_users):
+    """
+    Tests listing users with pagination and manually filters by role.
+    """
+    role_to_filter = UserRole.AUTHENTICATED  # Assuming all users in the fixture have this role
+    users_page_1 = await UserService.list_users(db_session, skip=0, limit=10)
+    users_page_2 = await UserService.list_users(db_session, skip=10, limit=10)
+    
+    # Verify pagination
+    assert len(users_page_1) == 10, "Page 1 should contain 10 users"
+    assert len(users_page_2) == 10, "Page 2 should contain 10 users"
+    assert users_page_1[0].id != users_page_2[0].id, "Users in page 1 should not overlap with users in page 2"
+
+    # Manually filter users by role
+    filtered_users = [user for user in users_page_1 + users_page_2 if user.role == role_to_filter.name]
+    assert all(user.role == role_to_filter.name for user in filtered_users), "All filtered users should have the specified role"

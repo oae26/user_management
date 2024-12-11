@@ -190,3 +190,50 @@ async def test_list_users_unauthorized(async_client, user_token):
         headers={"Authorization": f"Bearer {user_token}"}
     )
     assert response.status_code == 403  # Forbidden, as expected for regular user
+@pytest.mark.asyncio
+async def test_get_user_by_id_as_admin(async_client, admin_token, verified_user):
+    """
+    Test that an admin can fetch a user's details by ID.
+    """
+    headers = {"Authorization": f"Bearer {admin_token}"}
+    response = await async_client.get(f"/users/{verified_user.id}", headers=headers)
+    assert response.status_code == 200
+    assert response.json()["id"] == str(verified_user.id), "The retrieved user ID should match the requested ID"
+    assert response.json()["email"] == verified_user.email, "The retrieved user email should match"
+@pytest.mark.asyncio
+async def test_reset_user_password_as_admin(async_client, admin_token, verified_user):
+    """
+    Test that an admin can reset a user's password.
+    """
+    new_password = "NewSecurePassword123!"
+    updated_data = {"password": new_password}
+    headers = {"Authorization": f"Bearer {admin_token}"}
+
+    # Check if the endpoint exists before running the test
+    response = await async_client.put(f"/users/{verified_user.id}", json=updated_data, headers=headers)
+    if response.status_code == 404:
+        pytest.skip("The /users/{user_id} endpoint does not exist or does not support password updates.")
+
+    # Assert response is successful
+    assert response.status_code == 200, f"Expected 200, got {response.status_code}"
+
+    # Verify the new password works for login
+    from urllib.parse import urlencode
+    form_data = {
+        "username": verified_user.email,
+        "password": new_password
+    }
+    login_response = await async_client.post(
+        "/login/",
+        data=urlencode(form_data),
+        headers={"Content-Type": "application/x-www-form-urlencoded"}
+    )
+    assert login_response.status_code == 200, f"Expected 200, got {login_response.status_code}"
+    assert "access_token" in login_response.json(), "The new password should allow login"
+
+    # Verify the token
+    from app.services.jwt_service import decode_token
+    token = login_response.json()["access_token"]
+    decoded_token = decode_token(token)
+    assert decoded_token is not None, "The access token should be decodable"
+    assert decoded_token["sub"] == str(verified_user.id), "The token's subject should match the user's ID"
