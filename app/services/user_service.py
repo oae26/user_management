@@ -199,3 +199,63 @@ class UserService:
             await session.commit()
             return True
         return False
+@classmethod
+async def update_profile(cls, session: AsyncSession, user_id: UUID, update_data: Dict[str, str]) -> Optional[User]:
+    """
+    Update user profile fields, such as name, bio, or location.
+    """
+    try:
+        # Validate and sanitize input using UserUpdate schema
+        validated_data = UserUpdate(**update_data).model_dump(exclude_unset=True)
+        
+        # Execute the update query
+        query = (
+            update(User)
+            .where(User.id == user_id)
+            .values(**validated_data)
+            .execution_options(synchronize_session="fetch")
+        )
+        await cls._execute_query(session, query)
+        
+        # Fetch the updated user
+        updated_user = await cls.get_by_id(session, user_id)
+        if updated_user:
+            logger.info(f"User {user_id} profile updated successfully.")
+            return updated_user
+        else:
+            logger.error(f"Failed to find user {user_id} after update.")
+            return None
+    except ValidationError as e:
+        logger.error(f"Validation error while updating profile: {e}")
+        return None
+    except SQLAlchemyError as e:
+        logger.error(f"Database error during profile update: {e}")
+        return None
+    
+@classmethod
+async def upgrade_to_professional_status(cls, session: AsyncSession, user_id: UUID, current_user: User) -> bool:
+    """
+    Upgrade a user to professional status if the current user is an admin or manager.
+
+    :param session: AsyncSession instance for database access.
+    :param user_id: The ID of the user to upgrade.
+    :param current_user: The current authenticated user performing the action.
+    :return: True if the upgrade was successful, False otherwise.
+    """
+    if current_user.role not in [UserRole.ADMIN, UserRole.MANAGER]:
+        logger.error(f"User {current_user.id} does not have permission to upgrade professional status.")
+        return False
+
+    user = await cls.get_by_id(session, user_id)
+    if not user:
+        logger.error(f"User {user_id} not found for professional status upgrade.")
+        return False
+
+    user.professional_status = True
+    user.professional_status_updated_at = datetime.now(timezone.utc)
+    session.add(user)
+    await session.commit()
+
+    # Optionally send a notification about the upgrade (handled by an external service)
+    logger.info(f"User {user_id} upgraded to professional status.")
+    return True

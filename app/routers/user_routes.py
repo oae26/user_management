@@ -245,3 +245,57 @@ async def verify_email(user_id: UUID, token: str, db: AsyncSession = Depends(get
     if await UserService.verify_email_with_token(db, user_id, token):
         return {"message": "Email verified successfully"}
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired verification token")
+@router.put("/users/{user_id}/profile", response_model=UserResponse, tags=["User Management Requires (Admin or Manager Roles)"])
+async def update_user_profile(
+    user_id: UUID,
+    profile_data: UserUpdate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(["ADMIN", "MANAGER", "USER"]))
+):
+    """
+    Update user profile fields.
+
+    - **user_id**: UUID of the user whose profile is being updated.
+    - **profile_data**: Data to update, such as name, bio, and other fields.
+    """
+    # Allow users to update their own profiles or admins/managers to update any profile
+    if current_user["id"] != user_id and current_user["role"] not in ["ADMIN", "MANAGER"]:
+        raise HTTPException(status_code=403, detail="Permission denied.")
+
+    updated_user = await UserService.update(db, user_id, profile_data.model_dump(exclude_unset=True))
+    if not updated_user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    return UserResponse.model_construct(
+        id=updated_user.id,
+        nickname=updated_user.nickname,
+        first_name=updated_user.first_name,
+        last_name=updated_user.last_name,
+        bio=updated_user.bio,
+        profile_picture_url=updated_user.profile_picture_url,
+        github_profile_url=updated_user.github_profile_url,
+        linkedin_profile_url=updated_user.linkedin_profile_url,
+        role=updated_user.role,
+        email=updated_user.email,
+        last_login_at=updated_user.last_login_at,
+        created_at=updated_user.created_at,
+        updated_at=updated_user.updated_at,
+        links=create_user_links(updated_user.id, request)
+    )
+@router.post("/users/{user_id}/professional-status", response_model=bool, tags=["User Management Requires (Admin or Manager Roles)"])
+async def upgrade_to_professional_status(
+    user_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(["ADMIN", "MANAGER"]))
+):
+    """
+    Upgrade a user to professional status.
+
+    - **user_id**: UUID of the user to upgrade.
+    """
+    success = await UserService.upgrade_to_professional_status(db, user_id, current_user)
+    if not success:
+        raise HTTPException(status_code=404, detail="User not found or action not permitted.")
+
+    return True
