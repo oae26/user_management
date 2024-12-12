@@ -193,3 +193,66 @@ async def test_list_users_with_filters(db_session, users_with_same_role_50_users
     # Manually filter users by role
     filtered_users = [user for user in users_page_1 + users_page_2 if user.role == role_to_filter.name]
     assert all(user.role == role_to_filter.name for user in filtered_users), "All filtered users should have the specified role"
+@pytest.mark.asyncio
+async def test_update_user_profile_success(async_client, user, user_token):
+    """
+    Test successful user profile update.
+    """
+    updated_data = {
+        "first_name": "UpdatedFirstName",
+        "last_name": "UpdatedLastName",
+        "bio": "This is an updated bio."
+    }
+    headers = {"Authorization": f"Bearer {user_token}"}
+    response = await async_client.put(f"/users/{user.id}/profile", json=updated_data, headers=headers)
+    assert response.status_code == 200
+    response_data = response.json()
+    assert response_data["first_name"] == updated_data["first_name"]
+    assert response_data["last_name"] == updated_data["last_name"]
+    assert response_data["bio"] == updated_data["bio"]
+
+
+@pytest.mark.asyncio
+async def test_update_user_profile_unauthorized(async_client, user):
+    """
+    Test unauthorized user profile update (missing token).
+    """
+    updated_data = {"bio": "This is an updated bio."}
+    response = await async_client.put(f"/users/{user.id}/profile", json=updated_data)
+    assert response.status_code == 401  # Unauthorized
+
+
+@pytest.mark.asyncio
+async def test_update_user_profile_invalid_data(async_client, user, user_token):
+    """
+    Test user profile update with invalid data.
+    """
+    invalid_data = {"bio": ""}  # Bio cannot be empty
+    headers = {"Authorization": f"Bearer {user_token}"}
+    response = await async_client.put(f"/users/{user.id}/profile", json=invalid_data, headers=headers)
+    assert response.status_code == 422  # Unprocessable Entity
+@pytest.mark.asyncio
+async def test_upgrade_to_professional_status_unauthorized(async_client, user, user_token):
+    """
+    Test professional status upgrade attempt by a regular user (not admin or manager).
+    """
+    headers = {"Authorization": f"Bearer {user_token}"}
+    response = await async_client.post(f"/users/{user.id}/professional-status", headers=headers)
+    assert response.status_code == 403  # Forbidden
+
+@pytest.mark.asyncio
+async def test_update_user_profile_invalid_data(async_client, user, admin_token):
+    headers = {"Authorization": f"Bearer {admin_token}"}
+    invalid_data = {"bio": ""}
+    response = await async_client.put(f"/users/{user.id}/profile", json=invalid_data, headers=headers)
+    assert response.status_code == 422
+@pytest.fixture
+def mock_require_role(mocker):
+    mocker.patch("app.dependencies.require_role", return_value={"user_id": "8658e6e4-a004-4d74-b12c-61b0f31d91c8", "role": "ADMIN"})
+@pytest.mark.asyncio
+async def test_update_user_profile_success(async_client, user, admin_token, mock_require_role):
+    headers = {"Authorization": f"Bearer {admin_token}"}
+    updated_data = {"bio": "Updated bio", "first_name": "NewName"}
+    response = await async_client.put(f"/users/{user.id}/profile", json=updated_data, headers=headers)
+    assert response.status_code == 200
+    assert response.json()["bio"] == updated_data["bio"]

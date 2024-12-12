@@ -246,6 +246,7 @@ async def verify_email(user_id: UUID, token: str, db: AsyncSession = Depends(get
         return {"message": "Email verified successfully"}
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired verification token")
 @router.put("/users/{user_id}/profile", response_model=UserResponse, tags=["User Management Requires (Admin or Manager Roles)"])
+@router.put("/users/{user_id}/profile", response_model=UserResponse, tags=["User Management Requires (Admin or Manager Roles)"])
 async def update_user_profile(
     user_id: UUID,
     profile_data: UserUpdate,
@@ -260,7 +261,7 @@ async def update_user_profile(
     - **profile_data**: Data to update, such as name, bio, and other fields.
     """
     # Allow users to update their own profiles or admins/managers to update any profile
-    if current_user["id"] != user_id and current_user["role"] not in ["ADMIN", "MANAGER"]:
+    if current_user["user_id"] != str(user_id) and current_user["role"] not in ["ADMIN", "MANAGER"]:
         raise HTTPException(status_code=403, detail="Permission denied.")
 
     updated_user = await UserService.update(db, user_id, profile_data.model_dump(exclude_unset=True))

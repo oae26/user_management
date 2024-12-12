@@ -233,7 +233,7 @@ async def update_profile(cls, session: AsyncSession, user_id: UUID, update_data:
         return None
     
 @classmethod
-async def upgrade_to_professional_status(cls, session: AsyncSession, user_id: UUID, current_user: User) -> bool:
+async def upgrade_to_professional_status(cls, session: AsyncSession, user_id: UUID, current_user: dict) -> bool:
     """
     Upgrade a user to professional status if the current user is an admin or manager.
 
@@ -242,13 +242,11 @@ async def upgrade_to_professional_status(cls, session: AsyncSession, user_id: UU
     :param current_user: The current authenticated user performing the action.
     :return: True if the upgrade was successful, False otherwise.
     """
-    if current_user.role not in [UserRole.ADMIN, UserRole.MANAGER]:
-        logger.error(f"User {current_user.id} does not have permission to upgrade professional status.")
+    if current_user["role"] not in ["ADMIN", "MANAGER"]:
         return False
 
     user = await cls.get_by_id(session, user_id)
     if not user:
-        logger.error(f"User {user_id} not found for professional status upgrade.")
         return False
 
     user.professional_status = True
@@ -257,5 +255,4 @@ async def upgrade_to_professional_status(cls, session: AsyncSession, user_id: UU
     await session.commit()
 
     # Optionally send a notification about the upgrade (handled by an external service)
-    logger.info(f"User {user_id} upgraded to professional status.")
     return True
