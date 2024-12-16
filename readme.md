@@ -9,3 +9,6 @@ This course definitely gave me more learning than I had thought I would acquire.
 # Feature Added: 
 
 Feature 8, which was updating the users to allow for role updates. 
+
+# Link to GitHub with All Commits
+1. https://github.com/oae26/user_management
