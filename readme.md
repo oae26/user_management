@@ -12,3 +12,23 @@ Feature 8, which was updating the users to allow for role updates.
 
 # Link to GitHub with All Commits
 1. https://github.com/oae26/user_management
+
+
+## User Profile Management
+
+This feature lets users manage their profile information. Users can update fields such as their name, bio, location, and other personal details.
+Key Features:
+
+    Users can edit their own profile details.
+    Admins and managers can edit the profile of any user.
+    Validation is applied to ensure only valid data is updated.
+    Changes are immediately persisted in the database.
+
+## Professional Status Upgrade
+
+This feature empowers admins and managers to upgrade users to "Professional" status.
+
+Key Features:
+
+    Admins and managers can promote users to professional status via a dedicated API endpoint.
+    Sends notifications to users upon status upgrade, ensuring transparency and acknowledgment. This also shows users their professional status on their pages, for visibility.
